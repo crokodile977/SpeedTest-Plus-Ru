@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тест интернета</title>
+<style>
+  :root{
+    --bg: #f7f8fa; --surface: #ffffff; --border: #e4e6ea; --border-strong: #d1d5db;
+    --text: #14171c; --text-2: #4b5563; --muted: #8a909a; --accent: #2563eb;
+    --good: #16a34a; --warn: #ca8a04; --bad: #dc2626;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  *{ box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; padding: 40px 24px 64px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  .header { margin-bottom: 28px; }
+  .header h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .header p { color: var(--text-2); margin: 0; font-size: 14px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+  button {
+    font: inherit; font-weight: 500; padding: 9px 16px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text); cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  button:hover:not(:disabled) { background: #f3f4f6; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  button.primary:hover:not(:disabled) { background: #000; }
+  .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .status::before {
+    content: ''; display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--muted); margin-right: 8px; vertical-align: 1px;
+  }
+  body.running .status::before { background: var(--accent); animation: pulse 1.2s infinite; }
+  body.done .status::before { background: var(--good); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .section-title {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 14px;
+  }
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; margin-bottom: 20px; }
+  .meta-item .label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .meta-item .value { font-size: 14px; font-weight: 500; color: var(--text); word-break: break-word; }
+  .metrics {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+  }
+  .metric { background: var(--surface); padding: 18px 16px; }
+  .metric .label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .metric .value {
+    font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
+    color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .metric .unit { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+  .metric .sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 900px) { .metrics { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 520px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+  .charts-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 780px) { .charts-2 { grid-template-columns: 1fr; } }
+  .chart-card { display: flex; flex-direction: column; }
+  .chart-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 16px; gap: 12px;
+  }
+  .chart-header h3 { font-size: 13px; font-weight: 600; margin: 0; color: var(--text); }
+  .chart-header .now { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chart-header .now b { color: var(--text); font-weight: 600; margin-right: 3px; }
+  .chart-body { height: 170px; position: relative; }
+  .chart-body canvas { display: block; width: 100%; height: 100%; }
+  .full { margin-bottom: 20px; }
+  .full .chart-body { height: 180px; }
+  .bars { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row {
+    display: grid; grid-template-columns: 150px 1fr 80px;
+    gap: 14px; align-items: center; font-size: 13px;
+  }
+  .bar-row .name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .name .dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted); margin-right: 8px; vertical-align: 1px;
+  }
+  .bar-row .name.good .dot { background: var(--good); }
+  .bar-row .name.bad .dot { background: var(--bad); }
+  .bar-row .name.pending .dot { background: var(--warn); }
+  .bar-track { height: 6px; background: #eef0f3; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 0; transition: width .35s ease; }
+  .bar-fill.good { background: var(--good); }
+  .bar-fill.warn { background: var(--warn); }
+  .bar-fill.bad  { background: var(--bad); }
+  .bar-row .ms { text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; font-size: 12px; }
+  @media (max-width: 620px) { .bar-row { grid-template-columns: 110px 1fr 60px; font-size: 12px; } }
+  details.log { margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  details.log summary { padding: 14px 20px; cursor: pointer; font-size: 13px; color: var(--text-2); user-select: none; list-style: none; }
+  details.log summary::-webkit-details-marker { display: none; }
+  details.log summary::before {
+    content: '›'; display: inline-block; margin-right: 10px;
+    transition: transform .15s; color: var(--muted);
+  }
+  details.log[open] summary::before { transform: rotate(90deg); }
+  details.log pre {
+    margin: 0; padding: 14px 20px 18px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.7; color: var(--text-2);
+    white-space: pre-wrap; max-height: 240px; overflow-y: auto;
+    border-top: 1px solid var(--border);
+  }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 10px 20px;
+    border-radius: var(--radius-sm); font-size: 13px;
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(20, 23, 28, .45);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 200; backdrop-filter: blur(2px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 12px;
+    max-width: 480px; width: 100%; padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.06);
+    animation: modalIn .15s ease-out;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(6px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+  }
+  .modal h2 { font-size: 17px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .modal p { margin: 0 0 12px; color: var(--text-2); font-size: 13px; }
+  .modal ul { margin: 0 0 16px; padding: 0 0 0 20px; font-size: 13px; color: var(--text-2); line-height: 1.8; }
+  .modal ul b { color: var(--text); }
+  .modal .note {
+    font-size: 12px; color: var(--muted); margin-bottom: 18px;
+    padding: 10px 12px; background: #fafbfc; border-radius: 6px; border: 1px solid var(--border);
+  }
+  .modal .checkline {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-2); margin-bottom: 20px;
+    cursor: pointer; user-select: none;
+  }
+  .modal .checkline input { cursor: pointer; margin: 0; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="header">
+    <h1>Тест интернета</h1>
+    <p>Скорость, задержка, джиттер, потери, доступность, DNS и маршрут</p>
+  </header>
+
+  <div class="toolbar">
+    <button id="start" class="primary">Запустить тест</button>
+    <button id="pingOnly">Только Ping</button>
+    <button id="export" disabled>Экспорт в JSON</button>
+    <span class="status" id="status">Готов к запуску</span>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <p class="section-title">Соединение</p>
+    <div class="meta">
+      <div class="meta-item"><div class="label">IP</div><div class="value" id="m-ip">—</div></div>
+      <div class="meta-item"><div class="label">Провайдер</div><div class="value" id="m-asn">—</div></div>
+      <div class="meta-item"><div class="label">Локация</div><div class="value" id="m-loc">—</div></div>
+      <div class="meta-item"><div class="label">Узел Cloudflare</div><div class="value" id="m-colo">—</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);" id="m-src"></div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Download</div>
+      <div class="value"><span id="down-v">—</span><span class="unit">Мбит/с</span></div>
+      <div class="sub" id="down-sub"></div>
+    </div>
+    <div class="metric">
+      <div class="label">Upload</div>
+      <div class="value"><span id="up-v">—</span><span class="unit">Мбит/с</span></div>
+      <div class="sub" id="up-sub"></div>
+    </div>
+    <div class="metric">
+      <div class="label">Ping</div>
+      <div class="value"><span id="ping-v">—</span><span class="unit">мс</span></div>
+    </div>
+    <div class="metric">
+      <div class="label">Jitter</div>
+      <div class="value"><span id="jit-v">—</span><span class="unit">мс</span></div>
+      <div class="sub" id="jit-sub"></div>
+    </div>
+    <div class="metric">
+      <div class="label">Потери (HTTP)</div>
+      <div class="value"><span id="loss-v">—</span><span class="unit">%</span></div>
+      <div class="sub" id="loss-sub"></div>
+    </div>
+    <div class="metric">
+      <div class="label">DNS (DoH)</div>
+      <div class="value"><span id="dns-v">—</span><span class="unit">мс</span></div>
+      <div class="sub" id="dns-sub"></div>
+    </div>
+  </div>
+
+  <div class="charts-2">
+    <div class="card chart-card">
+      <div class="chart-header">
+        <h3>Скорость скачивания</h3>
+        <span class="now"><b id="down-now">—</b>Мбит/с</span>
+      </div>
+      <div class="chart-body"><canvas id="chart-down"></canvas></div>
+    </div>
+    <div class="card chart-card">
+      <div class="chart-header">
+        <h3>Скорость отдачи</h3>
+        <span class="now"><b id="up-now">—</b>Мбит/с</span>
+      </div>
+      <div class="chart-body"><canvas id="chart-up"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card full">
+    <div class="chart-header">
+      <h3>Задержка · 25 проб до <span id="ping-host" style="color:var(--muted);font-weight:400;">—</span></h3>
+      <span class="now">медиана <b id="ping-med">—</b>мс</span>
+    </div>
+    <div class="chart-body"><canvas id="chart-ping"></canvas></div>
+  </div>
+
+  <div class="charts-2">
+    <div class="card">
+      <p class="section-title">Доступность сервисов</p>
+      <div class="bars" id="avail-bars"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5;">
+        Браузер не видит HTTP-статус чужих сайтов, поэтому «доступно» значит «сервер ответил», а не «страница открылась».
+      </div>
+    </div>
+    <div class="card">
+      <p class="section-title">Маршрут · RTT до сервисов</p>
+      <div class="bars" id="trace-bars"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5;">
+        Не traceroute. Браузер не умеет ICMP — это измерение RTT до разных точек сети.
+      </div>
+    </div>
+  </div>
+
+  <details class="log">
+    <summary>Лог выполнения</summary>
+    <pre id="log">Готов.</pre>
+  </details>
+
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h2 id="modal-title">Внимание: большой расход трафика</h2>
+    <p>Полный тест качает и отдаёт данные ~20 секунд, чтобы точно измерить скорость. Ожидаемый объём:</p>
+    <ul>
+      <li>Скачивание: <b>~700 МБ – 1.2 ГБ</b></li>
+      <li>Отдача: <b>~200–500 МБ</b></li>
+      <li>Ping, DNS, доступность: <b>~5 МБ</b></li>
+      <li><b>Итого: до 1.7 ГБ</b></li>
+    </ul>
+    <div class="note">
+      На быстром канале (800+ Мбит/с) объём вырастает пропорционально.
+      На мобильном интернете или тарифе с лимитом это критично —
+      используйте «Только Ping» (расход ~1 МБ).
+    </div>
+    <label class="checkline">
+      <input type="checkbox" id="modal-dontshow">
+      Больше не показывать это предупреждение
+    </label>
+    <div class="modal-actions">
+      <button id="modal-cancel">Отмена</button>
+      <button id="modal-continue" class="primary">Продолжить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const logEl = $('log');
+  const toastEl = $('toast');
+  const modalEl = $('modal');
+  const setStatus = s => $('status').textContent = s;
+  const log = msg => {
+    logEl.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const setRunState = s => {
+    document.body.classList.remove('running', 'done');
+    if (s) document.body.classList.add(s);
+  };
+  const toast = msg => {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 1800);
+  };
+
+  // ============================================================
+  // MODAL
+  // ============================================================
+  const LS_KEY = 'speedtest.skip-traffic-warning';
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  function showTrafficWarning() {
+    return new Promise(resolve => {
+      if (lsGet(LS_KEY) === '1') { resolve(true); return; }
+      modalEl.classList.add('show');
+      $('modal-continue').focus();
+      $('modal-dontshow').checked = false;
+      const cleanup = () => {
+        modalEl.classList.remove('show');
+        $('modal-continue').removeEventListener('click', onYes);
+        $('modal-cancel').removeEventListener('click', onNo);
+        modalEl.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
+      };
+      const onYes = () => {
+        if ($('modal-dontshow').checked) lsSet(LS_KEY, '1');
+        cleanup(); resolve(true);
+      };
+      const onNo = () => { cleanup(); resolve(false); };
+      const onBackdrop = e => { if (e.target === modalEl) onNo(); };
+      const onKey = e => { if (e.key === 'Escape') onNo(); };
+      $('modal-continue').addEventListener('click', onYes);
+      $('modal-cancel').addEventListener('click', onNo);
+      modalEl.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  const median = arr => {
+    if (!arr.length) return 0;
+    const s = [...arr].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  const percentile = (sorted, p) => {
+    if (!sorted.length) return 0;
+    const idx = (sorted.length - 1) * (p / 100);
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return lo === hi ? sorted[lo]
+      : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  };
+  const fmtBytes = n => {
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + ' ГБ';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + ' МБ';
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + ' КБ';
+    return n + ' Б';
+  };
+
+  // ============================================================
+  // CANVAS CHART ENGINE
+  // ============================================================
+  const DPR = () => window.devicePixelRatio || 1;
+  function fitCanvas(cv) {
+    const dpr = DPR();
+    const rect = cv.getBoundingClientRect();
+    const w = Math.max(1, rect.width | 0);
+    const h = Math.max(1, rect.height | 0);
+    if (cv.width !== w * dpr || cv.height !== h * dpr) {
+      cv.width = w * dpr; cv.height = h * dpr;
+    }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+
+  function drawLine(cv, data, opts = {}) {
+    const { ctx, w, h } = fitCanvas(cv);
+    ctx.clearRect(0, 0, w, h);
+    const PAD = { l: 46, r: 10, t: 14, b: 22 };
+    const cw = w - PAD.l - PAD.r;
+    const ch = h - PAD.t - PAD.b;
+
+    ctx.strokeStyle = '#eef0f3';
+    ctx.lineWidth = 1;
+    const rows = 4;
+    for (let i = 0; i <= rows; i++) {
+      const y = PAD.t + (i / rows) * ch + 0.5;
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + cw, y); ctx.stroke();
+    }
+
+    if (!data || data.length < 1) {
+      ctx.strokeStyle = '#e4e6ea';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(PAD.l, PAD.t + ch / 2);
+      ctx.lineTo(PAD.l + cw, PAD.t + ch / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
+
+    const vs = data.map(d => d.v);
+    let vMax = opts.yMax ?? Math.max(...vs);
+    let vMin = opts.yMin ?? Math.min(...vs);
+    if (vMax === vMin) { vMax = vMin + 1; }
+    const span = vMax - vMin;
+    vMax += span * 0.08;
+
+    const ts = data.map(d => d.t);
+    const tMin = Math.min(...ts);
+    const tMax = Math.max(...ts);
+    const xOf = t => PAD.l + ((t - tMin) / Math.max(0.0001, tMax - tMin)) * cw;
+    const yOf = v => PAD.t + ch - ((v - vMin) / Math.max(0.0001, vMax - vMin)) * ch;
+
+    ctx.fillStyle = '#8a909a';
+    ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i <= rows; i++) {
+      const y = PAD.t + (i / rows) * ch;
+      const val = vMax - (i / rows) * (vMax - vMin);
+      const label = opts.formatY ? opts.formatY(val) : (
+        val >= 100 ? val.toFixed(0) :
+        val >= 10  ? val.toFixed(1) : val.toFixed(2)
+      );
+      ctx.fillText(label, PAD.l - 8, y);
+    }
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#b0b5bd';
+    const xLabel = t => opts.formatX ? opts.formatX(t) : t.toFixed(1) + 'с';
+    ctx.fillText(xLabel(tMin), PAD.l, PAD.t + ch + 6);
+    ctx.textAlign = 'right';
+    if (tMax > tMin) ctx.fillText(xLabel(tMax), PAD.l + cw, PAD.t + ch + 6);
+
+    if (opts.refLine != null && opts.refLine >= vMin && opts.refLine <= vMax) {
+      const y = yOf(opts.refLine);
+      ctx.strokeStyle = (opts.color || '#2563eb') + '55';
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + cw, y); ctx.stroke();
+      ctx.setLineDash([]);
+      if (opts.refLabel) {
+        ctx.fillStyle = (opts.color || '#2563eb');
+        ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(opts.refLabel, PAD.l + cw - 4, y - 3);
+      }
+    }
+
+    if (opts.fill) {
+      ctx.beginPath();
+      ctx.moveTo(xOf(data[0].t), PAD.t + ch);
+      data.forEach(d => ctx.lineTo(xOf(d.t), yOf(d.v)));
+      ctx.lineTo(xOf(data[data.length - 1].t), PAD.t + ch);
+      ctx.closePath();
+      ctx.fillStyle = opts.fill; ctx.fill();
+    }
+
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      const x = xOf(d.t), y = yOf(d.v);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = opts.color || '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      const x = xOf(last.t), y = yOf(last.v);
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = opts.color || '#2563eb'; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = (opts.color || '#2563eb') + '22'; ctx.fill();
+    }
+  }
+
+  // ============================================================
+  // FETCH С ТАЙМАУТОМ
+  // ============================================================
+  async function fetchT(url, opts = {}, timeoutMs = 5000) {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), timeoutMs);
+    const t0 = performance.now();
+    try {
+      const r = await fetch(url, { cache: 'no-store', ...opts, signal: ctrl.signal });
+      clearTimeout(to);
+      const ok = r.ok || r.type === 'opaque' || r.type === 'opaqueredirect';
+      return { ok, res: r, ms: performance.now() - t0 };
+    } catch (e) {
+      clearTimeout(to);
+      return { ok: false, err: e, ms: performance.now() - t0 };
+    }
+  }
+
+  const DL = bytes => `https://speed.cloudflare.com/__down?bytes=${bytes}&r=${Math.random()}`;
+  const UP = 'https://speed.cloudflare.com/__up';
+
+  // ============================================================
+  // GLOBAL RESULT
+  // ============================================================
+  const freshResult = () => ({
+    startedAt: null, finishedAt: null, meta: null, ping: null,
+    download: null, upload: null, dns: null,
+    availability: [], trace: [], pingHost: null,
+  });
+  const result = freshResult();
+  // перед каждым запуском чистим результаты, но метаданные соединения оставляем
+  function resetResult() {
+    const meta = result.meta;
+    Object.assign(result, freshResult(), { meta });
+  }
+
+  // ============================================================
+  // PING HOST SELECTION
+  // ============================================================
+  const PING_CANDIDATES = [
+    { name: 'Google',             url: () => 'https://www.google.com/generate_204?x=' + Math.random() },
+    { name: 'Yandex',             url: () => 'https://yandex.ru/favicon.ico?x=' + Math.random() },
+    { name: 'Cloudflare 1.1.1.1', url: () => 'https://one.one.one.one/favicon.ico?x=' + Math.random() },
+    { name: 'Cloudflare Speed',   url: () => 'https://speed.cloudflare.com/__down?bytes=0&x=' + Math.random() },
+  ];
+  let chosenPingHost = PING_CANDIDATES[0];
+  let hostPicked = false;
+
+  async function pickFastestPingHost() {
+    setStatus('Определяю ближайший сервер…');
+    const scores = [];
+    for (const h of PING_CANDIDATES) {
+      for (let i = 0; i < 2; i++) await fetchT(h.url(), { mode: 'no-cors' }, 2500);
+      const times = [];
+      for (let i = 0; i < 5; i++) {
+        const r = await fetchT(h.url(), { mode: 'no-cors' }, 2500);
+        if (r.ok) times.push(r.ms);
+        await sleep(30);
+      }
+      if (times.length >= 3) {
+        times.sort((a, b) => a - b);
+        const m = times[Math.floor(times.length / 2)];
+        scores.push({ host: h, rtt: m });
+        log(`Кандидат ${h.name}: ${m.toFixed(1)} мс`);
+      } else {
+        log(`Кандидат ${h.name}: недоступен`);
+      }
+    }
+    scores.sort((a, b) => a.rtt - b.rtt);
+    if (scores.length) {
+      chosenPingHost = scores[0].host;
+      hostPicked = true;
+      log(`Выбран ближайший: ${chosenPingHost.name} (${scores[0].rtt.toFixed(1)} мс)`);
+    }
+    result.pingHost = chosenPingHost.name;
+    $('ping-host').textContent = chosenPingHost.name;
+    return chosenPingHost;
+  }
+
+  async function ensurePingHost() {
+    if (!hostPicked) await pickFastestPingHost();
+    return chosenPingHost;
+  }
+
+  // ============================================================
+  // META
+  // ============================================================
+  function renderMeta({ ip, isp, loc, colo, src }) {
+    $('m-ip').textContent = ip || '—';
+    $('m-asn').textContent = isp || '—';
+    $('m-loc').textContent = loc || '—';
+    $('m-colo').textContent = colo || '—';
+    $('m-src').textContent = src ? `Источник: ${src}` : '';
+    result.meta = { ip, isp, loc, colo, source: src };
+  }
+  async function loadMeta() {
+    try {
+      const r = await fetchT('https://speed.cloudflare.com/meta', {}, 4000);
+      if (r.ok) {
+        const m = await r.res.json();
+        renderMeta({
+          ip: m.clientIp,
+          isp: `${m.asOrganization || '—'} (AS${m.asn || '?'})`,
+          loc: `${m.city || '?'}, ${m.country || '?'}`,
+          colo: m.colo || '—', src: 'Cloudflare'
+        });
+        return;
+      }
+    } catch (_) {}
+    try {
+      const r = await fetchT('https://ipwho.is/', {}, 4000);
+      if (r.ok) {
+        const m = await r.res.json();
+        if (m.success !== false) {
+          renderMeta({
+            ip: m.ip,
+            isp: m.connection?.isp || m.connection?.org || '—',
+            loc: `${m.city || '?'}, ${m.country || '?'}`,
+            colo: '—', src: 'ipwho.is'
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    try {
+      const r = await fetchT('https://api.myip.com/', {}, 4000);
+      if (r.ok) {
+        const m = await r.res.json();
+        renderMeta({ ip: m.ip, isp: '—', loc: m.country || '—', colo: '—', src: 'api.myip.com' });
+        return;
+      }
+    } catch (_) {}
+    try {
+      const r = await fetchT('https://api.ipify.org?format=json', {}, 4000);
+      if (r.ok) {
+        const m = await r.res.json();
+        renderMeta({ ip: m.ip, isp: '—', loc: '—', colo: '—', src: 'ipify' });
+        return;
+      }
+    } catch (_) {}
+    log('Не удалось получить метаданные');
+  }
+
+  // ============================================================
+  // PING
+  // ============================================================
+  function computePingStats(raw) {
+    if (!raw.length) return { median: 0, jitterMedian: 0, jitterMean: 0, outliers: 0 };
+    const sorted = [...raw].sort((a, b) => a - b);
+    const medRaw = sorted[Math.floor(sorted.length / 2)];
+    const cutoff = Math.max(medRaw * 3, medRaw + 50);
+    const clean = raw.filter(v => v <= cutoff);
+    const outliers = raw.length - clean.length;
+    const diffs = [];
+    for (let i = 1; i < clean.length; i++) diffs.push(Math.abs(clean[i] - clean[i - 1]));
+    diffs.sort((a, b) => a - b);
+    const jitterMedian = diffs.length ? diffs[Math.floor(diffs.length / 2)] : 0;
+    const jitterMean = diffs.length ? diffs.reduce((a, b) => a + b, 0) / diffs.length : 0;
+    const cleanSorted = [...clean].sort((a, b) => a - b);
+    const med = cleanSorted.length ? cleanSorted[Math.floor(cleanSorted.length / 2)] : 0;
+    return { median: med, jitterMedian, jitterMean, outliers };
+  }
+
+  let pingSamples = [];
+  function redrawPing() {
+    if (!pingSamples.length) return;
+    const data = pingSamples.map((v, i) => ({ t: i + 1, v }));
+    const vMax = Math.max(...pingSamples);
+    const vMin = Math.min(...pingSamples);
+    drawLine($('chart-ping'), data, {
+      color: '#2563eb', fill: 'rgba(37,99,235,0.06)',
+      yMin: Math.max(0, vMin - (vMax - vMin) * 0.2), yMax: vMax,
+      formatY: v => v.toFixed(0) + ' мс',
+      formatX: t => '#' + t.toFixed(0)
+    });
+  }
+
+  async function measureLatency() {
+    const host = chosenPingHost;
+    setStatus(`Прогрев соединения с ${host.name}…`);
+    for (let i = 0; i < 5; i++) await fetchT(host.url(), { mode: 'no-cors' }, 2500);
+    pingSamples = []; redrawPing();
+    const samples = 25;
+    let lost = 0;
+    for (let i = 0; i < samples; i++) {
+      const r = await fetchT(host.url(), { mode: 'no-cors' }, 2500);
+      if (r.ok) {
+        pingSamples.push(r.ms);
+        $('ping-med').textContent = median(pingSamples).toFixed(1);
+        redrawPing();
+        setStatus(`Ping ${i + 1}/${samples}: ${r.ms.toFixed(0)} мс`);
+      } else lost++;
+      await sleep(50);
+    }
+    const stats = computePingStats(pingSamples);
+    const loss = (lost / samples) * 100;
+    result.ping = {
+      host: host.name,
+      median: +stats.median.toFixed(2),
+      jitterMedian: +stats.jitterMedian.toFixed(2),
+      jitterMean: +stats.jitterMean.toFixed(2),
+      lossPercent: +loss.toFixed(1),
+      samples: pingSamples.length, lost, outliers: stats.outliers,
+      raw: pingSamples.map(v => +v.toFixed(2))
+    };
+    result.pingHost = host.name;
+    if (!pingSamples.length) {
+      $('loss-v').textContent = '100';
+      $('loss-sub').textContent = `${lost} из ${samples} запросов`;
+      throw new Error(`нет ответа от ${host.name} — проверьте подключение`);
+    }
+    return { ...stats, loss, lost, samples };
+  }
+
+  // ============================================================
+  // DOWNLOAD / UPLOAD — параллельные потоки, устойчивая скорость
+  // ============================================================
+  const STREAMS_DOWN = 4;
+  const STREAMS_UP = 3;
+  const DOWN_TARGET_SEC = 10;
+  const UP_TARGET_SEC = 10;
+  const WARMUP_SEC = 2;             // разгон TCP не входит в итоговую цифру
+  const SAMPLE_INTERVAL_MS = 150;   // как часто ставим точку на графике
+  const DOWN_CHUNK = 25_000_000;
+  const UP_CHUNK = 8_000_000;
+  const MAX_FAILS = 3;              // столько ошибок подряд — и тест прерывается
+
+  let downSamples = [];
+  let downBest = 0;                 // итоговая (устойчивая) скорость
+  let upSamples = [];
+  let upBest = 0;
+
+  // Сглаживание: скользящее среднее из 3 точек
+  function smooth3(samples) {
+    if (samples.length < 3) return samples;
+    const out = [];
+    for (let i = 0; i < samples.length; i++) {
+      const a = samples[Math.max(0, i - 1)];
+      const b = samples[i];
+      const c = samples[Math.min(samples.length - 1, i + 1)];
+      out.push({ t: b.t, v: (a.v + b.v + c.v) / 3 });
+    }
+    return out;
+  }
+
+  function drawSpeed(id, samples, refVal, color, fill) {
+    if (!samples.length) return;
+    const ref = refVal > 0 ? refVal : null;
+    drawLine($(id), smooth3(samples), {
+      color, fill, yMin: 0,
+      refLine: ref,
+      refLabel: ref != null ? ref.toFixed(0) + ' Мбит/с' : null,
+      formatY: v => v.toFixed(0),
+      formatX: t => t.toFixed(1) + 'с'
+    });
+  }
+  const redrawDown = refVal => drawSpeed('chart-down', downSamples, refVal, '#2563eb', 'rgba(37,99,235,0.08)');
+  const redrawUp   = refVal => drawSpeed('chart-up',   upSamples,   refVal, '#7c3aed', 'rgba(124,58,237,0.08)');
+
+  // Общий счётчик: каждые 150 мс берёт накопленные байты, считает мгновенную
+  // скорость (для графика) и устойчивую скорость — всё, что после WARMUP_SEC.
+  function createMeter(samples, getBytes) {
+    const t0 = performance.now();
+    const points = [{ t: 0, bytes: 0 }];
+    let lastT = 0, lastBytes = 0, peak = 0, inst = 0;
+    const m = {
+      get elapsed() { return (performance.now() - t0) / 1000; },
+      get peak() { return peak; },
+      get inst() { return inst; },
+      get bytes() { return getBytes(); },
+      tick() {
+        const t = m.elapsed, bytes = getBytes();
+        const dt = t - lastT;
+        if (dt < 0.05) return;
+        inst = ((bytes - lastBytes) * 8) / dt / 1e6;
+        lastT = t; lastBytes = bytes;
+        points.push({ t, bytes });
+        if (bytes > 0) {
+          samples.push({ t, v: inst });
+          if (inst > peak) peak = inst;
+        }
+      },
+      steady() {
+        const last = points[points.length - 1];
+        const start = points.find(p => p.t >= WARMUP_SEC);
+        if (start && last.t - start.t >= 1) {
+          return ((last.bytes - start.bytes) * 8) / (last.t - start.t) / 1e6;
+        }
+        return last.t > 0 ? (last.bytes * 8) / last.t / 1e6 : 0;
+      }
+    };
+    return m;
+  }
+
+  // ---------------- DOWNLOAD ----------------
+  async function measureDownload() {
+    downBest = 0;
+    downSamples = [];
+    let received = 0, requests = 0, fails = 0, dead = false;
+    const ctrl = new AbortController();
+    const meter = createMeter(downSamples, () => received);
+
+    const worker = async () => {
+      while (!ctrl.signal.aborted && !dead) {
+        try {
+          requests++;
+          const res = await fetch(DL(DOWN_CHUNK), { cache: 'no-store', signal: ctrl.signal });
+          if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+          const reader = res.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            received += value.length;
+          }
+          fails = 0;
+        } catch (e) {
+          if (ctrl.signal.aborted) return;
+          if (++fails >= MAX_FAILS) {
+            dead = true;
+            log(`Download: ${fails} ошибок подряд (${e.message})`);
+          } else await sleep(200);
+        }
+      }
+    };
+
+    const timer = setInterval(() => {
+      meter.tick();
+      const t = meter.elapsed;
+      $('down-now').textContent = meter.inst.toFixed(1);
+      const live = meter.steady();
+      if (live > 0) { downBest = live; $('down-v').textContent = live.toFixed(1); }
+      redrawDown(downBest);
+      setStatus(`Скачивание · ${Math.min(t, DOWN_TARGET_SEC).toFixed(1)}/${DOWN_TARGET_SEC} с · ${fmtBytes(received)}`);
+      if (t >= DOWN_TARGET_SEC) ctrl.abort();
+    }, SAMPLE_INTERVAL_MS);
+
+    await Promise.all(Array.from({ length: STREAMS_DOWN }, worker));
+    clearInterval(timer);
+    meter.tick();
+
+    if (received === 0) {
+      log('Download: данные не получены');
+      $('down-v').textContent = '—'; $('down-now').textContent = '—';
+      result.download = { mbps: 0, error: 'no data' };
+      return 0;
+    }
+
+    const steady = meter.steady();
+    downBest = steady;
+    const windows = downSamples.filter(s => s.t >= WARMUP_SEC).map(s => s.v);
+    const med = median(windows);
+    $('down-v').textContent = steady.toFixed(1);
+    $('down-now').textContent = steady.toFixed(1);
+    $('down-sub').textContent = `пик ${meter.peak.toFixed(0)} · медиана ${med.toFixed(0)}`;
+    redrawDown(steady);
+    log(`Download: ${steady.toFixed(1)} Мбит/с (после разгона ${WARMUP_SEC} с), пик ${meter.peak.toFixed(0)}, ${STREAMS_DOWN} потока, ${fmtBytes(received)} за ${meter.elapsed.toFixed(1)} с`);
+
+    result.download = {
+      mbps: +steady.toFixed(2), peakMbps: +meter.peak.toFixed(2), medianMbps: +med.toFixed(2),
+      streams: STREAMS_DOWN, warmupSec: WARMUP_SEC, requests,
+      bytes: received, totalDurationSec: +meter.elapsed.toFixed(2),
+      samples: downSamples.map(s => ({ t: +s.t.toFixed(2), v: +s.v.toFixed(2) }))
+    };
+    return steady;
+  }
+
+  // ---------------- UPLOAD ----------------
+  // Один буфер на всё время работы: случайные данные, Blob собирается из ссылок на кусок
+  let upBlob = null;
+  function getUpBlob() {
+    if (!upBlob) {
+      const chunk = new Uint8Array(1_000_000);
+      for (let i = 0; i < chunk.length; i += 65536) {
+        crypto.getRandomValues(chunk.subarray(i, Math.min(i + 65536, chunk.length)));
+      }
+      upBlob = new Blob(Array(UP_CHUNK / chunk.length).fill(chunk));
+    }
+    return upBlob;
+  }
+
+  async function measureUpload() {
+    upBest = 0;
+    upSamples = [];
+    const cur = new Array(STREAMS_UP).fill(0);   // байты текущих запросов
+    let done = 0, requests = 0, fails = 0, dead = false, stop = false;
+    const xhrs = new Set();
+    const total = () => done + cur.reduce((a, b) => a + b, 0);
+    const meter = createMeter(upSamples, total);
+    const blob = getUpBlob();
+
+    const send = idx => new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      xhrs.add(xhr);
+      requests++;
+      const finish = ok => {
+        done += cur[idx]; cur[idx] = 0;
+        xhrs.delete(xhr);
+        resolve(ok);
+      };
+      xhr.open('POST', UP, true);
+      xhr.timeout = 30000;
+      xhr.upload.onprogress = e => { cur[idx] = e.loaded; };
+      xhr.onload = () => finish(xhr.status >= 200 && xhr.status < 300);
+      xhr.onerror = () => finish(false);
+      xhr.ontimeout = () => finish(false);
+      xhr.onabort = () => finish(true);
+      xhr.send(blob);
+    });
+
+    const worker = async idx => {
+      while (!stop && !dead) {
+        const ok = await send(idx);
+        if (stop) return;
+        if (ok) fails = 0;
+        else if (++fails >= MAX_FAILS) {
+          dead = true;
+          log(`Upload: ${fails} ошибок подряд`);
+        } else await sleep(200);
+      }
+    };
+
+    const timer = setInterval(() => {
+      meter.tick();
+      const t = meter.elapsed;
+      $('up-now').textContent = meter.inst.toFixed(1);
+      const live = meter.steady();
+      if (live > 0) { upBest = live; $('up-v').textContent = live.toFixed(1); }
+      redrawUp(upBest);
+      setStatus(`Отдача · ${Math.min(t, UP_TARGET_SEC).toFixed(1)}/${UP_TARGET_SEC} с · ${fmtBytes(total())}`);
+      if (t >= UP_TARGET_SEC && !stop) {
+        stop = true;
+        xhrs.forEach(x => { try { x.abort(); } catch (_) {} });
+      }
+    }, SAMPLE_INTERVAL_MS);
+
+    await Promise.all(Array.from({ length: STREAMS_UP }, (_, i) => worker(i)));
+    clearInterval(timer);
+    meter.tick();
+
+    const sent = total();
+    if (sent === 0) {
+      log('Upload: данные не отправлены');
+      $('up-v').textContent = '—'; $('up-now').textContent = '—';
+      result.upload = { mbps: 0, error: 'no data' };
+      return 0;
+    }
+
+    const steady = meter.steady();
+    upBest = steady;
+    const windows = upSamples.filter(s => s.t >= WARMUP_SEC).map(s => s.v);
+    const med = median(windows);
+    $('up-v').textContent = steady.toFixed(1);
+    $('up-now').textContent = steady.toFixed(1);
+    $('up-sub').textContent = `пик ${meter.peak.toFixed(0)} · медиана ${med.toFixed(0)}`;
+    redrawUp(steady);
+    log(`Upload: ${steady.toFixed(1)} Мбит/с (после разгона ${WARMUP_SEC} с), пик ${meter.peak.toFixed(0)}, ${STREAMS_UP} потока, ${fmtBytes(sent)} за ${meter.elapsed.toFixed(1)} с`);
+
+    result.upload = {
+      mbps: +steady.toFixed(2), peakMbps: +meter.peak.toFixed(2), medianMbps: +med.toFixed(2),
+      streams: STREAMS_UP, warmupSec: WARMUP_SEC, requests,
+      bytes: sent, totalDurationSec: +meter.elapsed.toFixed(2),
+      samples: upSamples.map(s => ({ t: +s.t.toFixed(2), v: +s.v.toFixed(2) }))
+    };
+    return steady;
+  }
+
+  // ============================================================
+  // DNS
+  // ============================================================
+  async function measureDNS() {
+    const endpoint = 'https://dns.google/resolve';
+    for (let i = 0; i < 2; i++) {
+      try { await fetchT(`${endpoint}?name=warmup.example&type=A`, {}, 3000); } catch(_) {}
+    }
+    const times = [];
+    for (let i = 0; i < 5; i++) {
+      const name = `t-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}.example.com`;
+      const r = await fetchT(`${endpoint}?name=${encodeURIComponent(name)}&type=A`, {}, 4000);
+      if (r.ok) times.push(r.ms);
+      await sleep(60);
+    }
+    if (!times.length) { log('DNS DoH: провал'); result.dns = null; return null; }
+    times.sort((a, b) => a - b);
+    const best = times[0];
+    const med = times[Math.floor(times.length / 2)];
+    log(`DNS DoH: ${times.map(t => t.toFixed(0)).join(', ')} мс → лучшая ${best.toFixed(0)}, медиана ${med.toFixed(0)}`);
+    result.dns = { bestMs: +best.toFixed(2), medianMs: +med.toFixed(2), raw: times.map(t => +t.toFixed(2)) };
+    $('dns-sub').textContent = `лучшая ${best.toFixed(0)}`;
+    return med;
+  }
+
+  // ============================================================
+  // AVAILABILITY
+  // ============================================================
+  const SERVICES = [
+    { name: 'Google',     host: 'https://www.google.com/favicon.ico' },
+    { name: 'YouTube',    host: 'https://www.youtube.com/favicon.ico' },
+    { name: 'GitHub',     host: 'https://github.com/favicon.ico' },
+    { name: 'Cloudflare', host: 'https://www.cloudflare.com/favicon.ico' },
+    { name: 'Wikipedia',  host: 'https://ru.wikipedia.org/favicon.ico' },
+    { name: 'Discord',    host: 'https://discord.com/favicon.ico' },
+    { name: 'Telegram',   host: 'https://telegram.org/favicon.ico' },
+    { name: 'Yandex',     host: 'https://yandex.ru/favicon.ico' },
+    { name: 'VK',         host: 'https://vk.com/favicon.ico' },
+  ];
+
+  async function probe(url, timeoutMs = 6000) {
+    const r = await fetchT(
+      url + (url.includes('?') ? '&' : '?') + 'x=' + Math.random(),
+      { mode: 'no-cors' }, timeoutMs
+    );
+    return { ok: r.ok, ms: r.ms };
+  }
+
+  async function probeWithRetry(url, timeoutMs = 6000, slowThreshold = 400) {
+    const first = await probe(url, timeoutMs);
+    if (!first.ok || first.ms > slowThreshold) {
+      await sleep(150);
+      const second = await probe(url, timeoutMs);
+      if (second.ok && second.ms < first.ms) return second;
+    }
+    return first;
+  }
+
+  const barClass = ms => ms < 100 ? 'good' : ms < 300 ? 'warn' : 'bad';
+
+  async function checkAvailability() {
+    const wrap = $('avail-bars');
+    wrap.innerHTML = '';
+    const maxRef = 500;
+    result.availability = [];
+
+    const rows = SERVICES.map(s => {
+      const el = document.createElement('div');
+      el.className = 'bar-row';
+      el.innerHTML = `
+        <div class="name pending"><span class="dot"></span>${s.name}</div>
+        <div class="bar-track"><div class="bar-fill"></div></div>
+        <div class="ms">…</div>
+      `;
+      wrap.appendChild(el);
+      return { s, el };
+    });
+
+    await Promise.all(rows.map(async ({ s, el }) => {
+      const r = await probeWithRetry(s.host);
+      const nameEl = el.querySelector('.name');
+      const fillEl = el.querySelector('.bar-fill');
+      const msEl   = el.querySelector('.ms');
+      nameEl.classList.remove('pending');
+      result.availability.push({
+        service: s.name, host: new URL(s.host).host,
+        ok: r.ok, ms: r.ok ? +r.ms.toFixed(2) : null
+      });
+      if (r.ok) {
+        nameEl.classList.add('good');
+        fillEl.classList.add(barClass(r.ms));
+        fillEl.style.width = Math.min(100, (r.ms / maxRef) * 100) + '%';
+        msEl.textContent = r.ms.toFixed(0) + ' мс';
+      } else {
+        nameEl.classList.add('bad');
+        fillEl.classList.add('bad');
+        fillEl.style.width = '100%';
+        msEl.textContent = '—';
+      }
+    }));
+  }
+
+  // ============================================================
+  // TRACE
+  // ============================================================
+  const TRACE = [
+    { name: 'Google',                     url: 'https://www.google.com/favicon.ico' },
+    { name: 'Cloudflare 1.1.1.1 (HTTPS)', url: 'https://one.one.one.one/favicon.ico' },
+    { name: 'GitHub',                     url: 'https://github.com/favicon.ico' },
+    { name: 'Cloudflare CDN',             url: 'https://www.cloudflare.com/favicon.ico' },
+    { name: 'Cloudflare Speed',           url: 'https://speed.cloudflare.com/__down?bytes=0' },
+    { name: 'Wikipedia',                  url: 'https://ru.wikipedia.org/favicon.ico' },
+  ];
+
+  // медиана из нескольких замеров, чтобы одна случайная задержка не портила картину
+  async function medianProbe(url, n = 3, timeoutMs = 4000) {
+    const times = [];
+    for (let i = 0; i < n; i++) {
+      const r = await probe(url, timeoutMs);
+      if (r.ok) times.push(r.ms);
+      await sleep(40);
+    }
+    return times.length ? { ok: true, ms: median(times) } : { ok: false, ms: timeoutMs };
+  }
+
+  async function traceRoute() {
+    const wrap = $('trace-bars');
+    wrap.innerHTML = '';
+    result.trace = [];
+
+    const rows = TRACE.map(h => {
+      const el = document.createElement('div');
+      el.className = 'bar-row';
+      el.innerHTML = `
+        <div class="name pending"><span class="dot"></span>${h.name}</div>
+        <div class="bar-track"><div class="bar-fill"></div></div>
+        <div class="ms">…</div>
+      `;
+      wrap.appendChild(el);
+      return { h, el };
+    });
+
+    // прогрев соединений (DNS + TLS), чтобы замеры мерили RTT, а не рукопожатие
+    for (const h of TRACE) await probe(h.url, 4000);
+
+    const results = [];
+    for (const { h, el } of rows) {
+      const r = await medianProbe(h.url);
+      results.push({ name: h.name, ms: r.ms, ok: r.ok, el });
+    }
+    // успешные по возрастанию, таймауты в конец
+    results.sort((a, b) => (b.ok - a.ok) || (a.ms - b.ms));
+    // шкала считается только по успешным: таймаут не должен сплющивать остальные полоски
+    const maxRef = Math.max(...results.filter(r => r.ok).map(r => r.ms), 100);
+
+    wrap.innerHTML = '';
+    for (const r of results) {
+      result.trace.push({ point: r.name, ok: r.ok, rttMs: r.ok ? +r.ms.toFixed(2) : null });
+      const nameEl = r.el.querySelector('.name');
+      const fillEl = r.el.querySelector('.bar-fill');
+      const msEl   = r.el.querySelector('.ms');
+      nameEl.classList.remove('pending');
+      if (r.ok) {
+        nameEl.classList.add('good');
+        fillEl.classList.add(barClass(r.ms));
+        fillEl.style.width = Math.max(2, (r.ms / maxRef) * 100) + '%';
+        msEl.textContent = r.ms.toFixed(0) + ' мс';
+      } else {
+        nameEl.classList.add('bad');
+        fillEl.classList.add('bad');
+        fillEl.style.width = '100%';
+        msEl.textContent = 'таймаут';
+      }
+      wrap.appendChild(r.el);
+    }
+  }
+
+  // ============================================================
+  // RESET + RUNNERS
+  // ============================================================
+  let busy = false;
+
+  function drawEmptyCharts() {
+    ['chart-ping', 'chart-down', 'chart-up'].forEach(id => drawLine($(id), []));
+  }
+
+  function resetUI() {
+    ['down-v','up-v','ping-v','jit-v','loss-v','dns-v','down-now','up-now','ping-med']
+      .forEach(id => { $(id).textContent = '—'; });
+    ['down-sub','up-sub','jit-sub','dns-sub','loss-sub']
+      .forEach(id => { $(id).textContent = ''; });
+    $('ping-host').textContent = hostPicked ? chosenPingHost.name : '—';
+    $('avail-bars').innerHTML = '';
+    $('trace-bars').innerHTML = '';
+    pingSamples = []; downSamples = []; upSamples = [];
+    downBest = 0; upBest = 0;
+    drawEmptyCharts();
+    $('export').disabled = true;
+  }
+
+  function showLatency(lat) {
+    $('ping-v').textContent  = lat.median.toFixed(1);
+    $('jit-v').textContent   = lat.jitterMedian.toFixed(1);
+    $('jit-sub').textContent = `mean ${lat.jitterMean.toFixed(1)}` +
+      (lat.outliers ? ` · выбросов ${lat.outliers}` : '');
+    $('loss-v').textContent  = lat.loss.toFixed(0);
+    $('loss-sub').textContent = `${lat.lost} из ${lat.samples} запросов`;
+  }
+
+  function assertOnline() {
+    if (navigator.onLine === false) throw new Error('нет подключения к сети');
+  }
+
+  function beginRun(title) {
+    logEl.textContent = title;
+    resetUI();
+    resetResult();
+    setRunState('running');
+    result.startedAt = new Date().toISOString();
+  }
+
+  async function runPingOnly() {
+    if (busy) return;
+    busy = true;
+    $('start').disabled = true;
+    $('pingOnly').disabled = true;
+    try {
+      await initPromise;               // фоновая инициализация со старта страницы
+      beginRun('Быстрый тест задержки…');
+      assertOnline();
+      await ensurePingHost();
+      $('ping-host').textContent = chosenPingHost.name;
+      showLatency(await measureLatency());
+      setStatus('Готово');
+      setRunState('done');
+      result.finishedAt = new Date().toISOString();
+      $('export').disabled = false;
+    } catch (e) {
+      console.error(e);
+      setStatus('Ошибка: ' + e.message);
+      log('Ошибка: ' + e.message);
+      setRunState(null);
+    } finally {
+      $('start').disabled = false;
+      $('pingOnly').disabled = false;
+      busy = false;
+    }
+  }
+
+  async function runAll() {
+    if (busy) return;
+    busy = true;
+    try {
+      if (!(await showTrafficWarning())) { log('Тест отменён пользователем'); return; }
+      $('start').disabled = true;
+      $('pingOnly').disabled = true;
+
+      await initPromise;
+      beginRun('Старт полного теста…');
+      assertOnline();
+
+      // метаданные уже могли загрузиться при старте страницы — тогда второй раз не просим
+      const metaPromise = result.meta ? Promise.resolve() : loadMeta().catch(() => {});
+
+      await ensurePingHost();
+      showLatency(await measureLatency());
+
+      setStatus('Измеряю скорость скачивания (10 с)…');
+      await measureDownload();
+
+      setStatus('Измеряю скорость отдачи (10 с)…');
+      await measureUpload();
+
+      setStatus('Проверяю DNS…');
+      const dns = await measureDNS();
+      $('dns-v').textContent = dns != null ? dns.toFixed(0) : '—';
+
+      setStatus('Проверяю доступность сервисов…');
+      await checkAvailability();
+
+      setStatus('Строю маршрут…');
+      await traceRoute();
+
+      await metaPromise;
+      setStatus('Готово');
+      setRunState('done');
+      log('Тест завершён');
+      result.finishedAt = new Date().toISOString();
+      $('export').disabled = false;
+    } catch (e) {
+      console.error(e);
+      setStatus('Ошибка: ' + e.message);
+      log('Ошибка: ' + e.message);
+      setRunState(null);
+    } finally {
+      $('start').disabled = false;
+      $('pingOnly').disabled = false;
+      busy = false;
+    }
+  }
+
+  // ============================================================
+  // EXPORT
+  // ============================================================
+  function exportJSON() {
+    const payload = {
+      tool: 'Internet Test', version: 'v12',
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      result
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.href = url;
+    a.download = `internet-test-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('JSON сохранён');
+    log('Результаты экспортированы в JSON');
+  }
+
+  // ============================================================
+  // WIRING
+  // ============================================================
+  $('start').addEventListener('click', runAll);
+  $('pingOnly').addEventListener('click', runPingOnly);
+  $('export').addEventListener('click', exportJSON);
+
+  window.addEventListener('resize', () => {
+    if (pingSamples.length) redrawPing(); else drawLine($('chart-ping'), []);
+    if (downSamples.length) redrawDown(downBest); else drawLine($('chart-down'), []);
+    if (upSamples.length) redrawUp(upBest); else drawLine($('chart-up'), []);
+  });
+
+  drawEmptyCharts();
+
+  // Фоновая инициализация: метаданные соединения + выбор ближайшего хоста для пинга.
+  // Запуски тестов дожидаются её, чтобы не было двух параллельных замеров.
+  const initPromise = (async () => {
+    try { await loadMeta(); await ensurePingHost(); } catch (_) {}
+    if (!busy) setStatus('Готов к запуску');
+  })();
+})();
+</script>
+</body>
+</html>
